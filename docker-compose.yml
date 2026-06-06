@@ -1,0 +1,86 @@
+x-airflow-common: &airflow-common
+  build: .
+  env_file:
+    - .env
+  environment:
+    # PYTHONPATH to allow absolute imports from src/
+    PYTHONPATH: /opt/airflow
+    # Connection to the PostgreSQL DB
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://jobsearch:jobsearch_secret@postgres:5432/jobsearch_db
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'False'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./resume:/opt/airflow/resume
+    - ./logs:/opt/airflow/logs
+    - ./config:/opt/airflow/config
+  user: "50000:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jobsearch
+      POSTGRES_PASSWORD: jobsearch_secret
+      POSTGRES_DB: jobsearch_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobsearch -d jobsearch_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    environment:
+      # Override to run db init commands
+      PYTHONPATH: /opt/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://jobsearch:jobsearch_secret@postgres:5432/jobsearch_db
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        echo "Initializing Airflow metadata database..."
+        airflow db init
+        echo "Creating default admin user 'airflow'..."
+        airflow users create \
+          --username airflow \
+          --password airflow \
+          --firstname Jonathan \
+          --lastname Costa \
+          --role Admin \
+          --email jonathan.fcost@gmail.com
+        echo "Airflow initialization complete!"
+    user: "50000:0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

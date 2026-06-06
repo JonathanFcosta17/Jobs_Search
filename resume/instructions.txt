@@ -1,0 +1,5 @@
+How to use this folder:
+1. Save your professional resume in PDF format in this folder with the exact filename:
+   curriculo.pdf
+2. The AI Agent will read this PDF to extract keywords and evaluate job matches automatically.
+3. If you update your resume in the future, simply replace the PDF file in this directory and delete "keywords_cache.json" (if you want to force a fresh keyword analysis by Gemini).
