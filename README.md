@@ -1,4 +1,4 @@
-# 💼 Autonomous Job Search AI Agent System
+# Autonomous Job Search AI Agent System
 
 An autonomous multi-agent system designed to automate your job search by collecting job listings, evaluating matches against your resume using LLMs, and notifying you with structured match reports. 
 
@@ -6,7 +6,7 @@ Orchestrated with **Apache Airflow**, persisted with **PostgreSQL**, and powered
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
@@ -43,7 +43,7 @@ flowchart TD
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
 1. **Autonomous Keyword Discovery**: The system parses your PDF resume using `PyMuPDF` and uses the Google Gemini API to extract optimal search terms (e.g., "Python Developer", "ML Engineer") dynamically.
 2. **Aggregated Search (Collector Agent)**: Uses the `JobSpy` engine to scrape postings from **LinkedIn, Indeed, and Glassdoor** concurrently.
@@ -54,7 +54,7 @@ flowchart TD
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 Jobs_Search/
@@ -86,7 +86,7 @@ Jobs_Search/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Place Your Resume
 Create a folder named `resume/` in the project root directory and add your resume in PDF format named **`curriculo.pdf`**:
@@ -122,7 +122,7 @@ python main.py
 
 ---
 
-## 🐳 Running in Production (Docker + Airflow)
+## Running in Production (Docker + Airflow)
 
 For automated daily executions, run the complete orchestrator suite:
 
@@ -145,7 +145,7 @@ docker compose up -d
 
 ---
 
-## 🧪 Running Unit Tests
+## Running Unit Tests
 
 The project includes a comprehensive test suite (using `pytest` and mock object patching) covering the resume parser, database adapter, Collector Agent, and Gemini Evaluator Agent.
 
