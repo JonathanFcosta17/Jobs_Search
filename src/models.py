@@ -25,3 +25,7 @@ class ProcessedJob(BaseModel):
     job: JobPosting
     match: MatchResult
     processed_at: datetime = Field(default_factory=datetime.utcnow)
+    input_tokens: int = Field(default=0, description="Input tokens used in Gemini call")
+    output_tokens: int = Field(default=0, description="Output tokens generated in Gemini call")
+    cost_usd: float = Field(default=0.0, description="Calculated API cost in USD")
+

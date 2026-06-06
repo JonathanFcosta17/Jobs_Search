@@ -66,11 +66,28 @@ class JobEvaluator:
             response_text = response.text.strip()
             match_result = MatchResult.model_validate_json(response_text)
             
-            logger.info(f"Evaluation complete. Score: {match_result.score}/100 | Recommendation: {match_result.recommendation}")
+            # Extract usage metadata
+            input_tokens = 0
+            output_tokens = 0
+            cost_usd = 0.0
+            
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                input_tokens = response.usage_metadata.prompt_token_count
+                output_tokens = response.usage_metadata.candidates_token_count
+                # Gemini 2.5 Flash pricing: Input = $0.075 / 1M tokens, Output = $0.30 / 1M tokens
+                cost_usd = (input_tokens * 0.075 / 1_000_000) + (output_tokens * 0.30 / 1_000_000)
+                
+            logger.info(
+                f"Evaluation complete. Score: {match_result.score}/100 | "
+                f"Cost: ${cost_usd:.6f} ({input_tokens} prompt, {output_tokens} completion)"
+            )
             
             return ProcessedJob(
                 job=job,
-                match=match_result
+                match=match_result,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_usd=cost_usd
             )
         except Exception as e:
             logger.error(f"Failed to evaluate job {job.title} ({job.external_id}): {e}", exc_info=True)

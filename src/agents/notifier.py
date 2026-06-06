@@ -173,8 +173,15 @@ EMAIL_TEMPLATE = """
         <div class="content">
             <div class="summary">
                 Hello,<br><br>
-                New job postings matching your profile have been found and evaluated.
+                New job postings matching your profile have been found and evaluated.<br>
                 Below are the <strong>{{ jobs|length }} best opportunities</strong> that reached your minimum match score of <strong>{{ min_score }}</strong>.
+                <br><br>
+                <div style="font-size: 13px; color: #6b7280; border-top: 1px dashed #e5e7eb; padding-top: 10px; line-height: 1.8;">
+                    📊 <strong>LLMOps Usage Audit:</strong><br>
+                    Estimated Run Cost: <strong>${{ "%.4f"|format(total_cost) }}</strong> | 
+                    Total Tokens: <strong>{{ total_input_tokens + total_output_tokens }}</strong> 
+                    ({{ total_input_tokens }} prompt, {{ total_output_tokens }} completion)
+                </div>
             </div>
             
             {% for p_job in jobs %}
@@ -245,9 +252,20 @@ def send_jobs_notification(jobs: List[ProcessedJob], min_score: int) -> bool:
         
     logger.info(f"Sending email notification with {len(jobs)} jobs to {settings.NOTIFICATION_EMAIL}...")
     
+    # Calculate usage aggregates for LLMOps reporting
+    total_input_tokens = sum(getattr(j, "input_tokens", 0) or 0 for j in jobs)
+    total_output_tokens = sum(getattr(j, "output_tokens", 0) or 0 for j in jobs)
+    total_cost = sum(getattr(j, "cost_usd", 0.0) or 0.0 for j in jobs)
+    
     # Render template using Jinja2
     template = Template(EMAIL_TEMPLATE)
-    html_content = template.render(jobs=jobs, min_score=min_score)
+    html_content = template.render(
+        jobs=jobs,
+        min_score=min_score,
+        total_input_tokens=total_input_tokens,
+        total_output_tokens=total_output_tokens,
+        total_cost=total_cost
+    )
     
     # Create MIME message
     msg = MIMEMultipart("alternative")
@@ -262,7 +280,10 @@ def send_jobs_notification(jobs: List[ProcessedJob], min_score: int) -> bool:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
             server.sendmail(settings.SMTP_EMAIL, settings.NOTIFICATION_EMAIL, msg.as_string())
-        logger.info("Notification email sent successfully.")
+        logger.info(
+            f"Notification email sent successfully. "
+            f"Usage metrics: {total_input_tokens + total_output_tokens} tokens spent, total cost: ${total_cost:.6f}"
+        )
         return True
     except Exception as e:
         logger.error(f"Failed to send email notification: {e}", exc_info=True)

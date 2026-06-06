@@ -8,6 +8,7 @@ from src.config import settings
 from src.models import JobPosting, MatchResult, ProcessedJob
 
 logger = logging.getLogger(__name__)
+
 @contextmanager
 def get_db_connection():
     db_url = settings.DATABASE_URL
@@ -33,7 +34,7 @@ def get_db_connection():
         conn.close()
 
 def init_db():
-    """Initializes the database schema if it doesn't exist."""
+    """Initializes the database schema if it doesn't exist and runs dynamic migrations."""
     query = """
     CREATE TABLE IF NOT EXISTS jobs (
         id SERIAL PRIMARY KEY,
@@ -53,14 +54,21 @@ def init_db():
         recommendation VARCHAR(50),
         notified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW(),
+        input_tokens INTEGER DEFAULT 0,
+        output_tokens INTEGER DEFAULT 0,
+        cost_usd NUMERIC(10, 6) DEFAULT 0.000000,
         UNIQUE(source, external_id)
     );
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query)
+            # Run ALTER TABLE commands to dynamically migrate existing database instances smoothly
+            cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS input_tokens INTEGER DEFAULT 0;")
+            cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS output_tokens INTEGER DEFAULT 0;")
+            cur.execute("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cost_usd NUMERIC(10, 6) DEFAULT 0.000000;")
         conn.commit()
-    logger.info("Database initialized successfully.")
+    logger.info("Database initialized and migrated successfully.")
 
 def job_exists(source: str, external_id: str) -> bool:
     """Checks if a job posting with given source and external ID already exists in DB."""
@@ -75,15 +83,19 @@ def save_job(processed_job: ProcessedJob) -> bool:
     query = """
     INSERT INTO jobs (
         external_id, source, title, company, location, description, job_url, date_posted, salary,
-        match_score, justification, key_matches, gaps, recommendation, notified, created_at
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        match_score, justification, key_matches, gaps, recommendation, notified, created_at,
+        input_tokens, output_tokens, cost_usd
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (source, external_id) DO UPDATE SET
         match_score = EXCLUDED.match_score,
         justification = EXCLUDED.justification,
         key_matches = EXCLUDED.key_matches,
         gaps = EXCLUDED.gaps,
         recommendation = EXCLUDED.recommendation,
-        created_at = EXCLUDED.created_at
+        created_at = EXCLUDED.created_at,
+        input_tokens = EXCLUDED.input_tokens,
+        output_tokens = EXCLUDED.output_tokens,
+        cost_usd = EXCLUDED.cost_usd
     """
     job = processed_job.job
     match = processed_job.match
@@ -108,7 +120,10 @@ def save_job(processed_job: ProcessedJob) -> bool:
                     json.dumps(match.gaps),
                     match.recommendation,
                     False,  # notified starts as False
-                    processed_job.processed_at
+                    processed_job.processed_at,
+                    processed_job.input_tokens,
+                    processed_job.output_tokens,
+                    processed_job.cost_usd
                 )
             )
         conn.commit()
@@ -119,7 +134,8 @@ def get_unnotified_high_score_jobs(min_score: int) -> list[ProcessedJob]:
     query = """
     SELECT 
         external_id, source, title, company, location, description, job_url, date_posted, salary,
-        match_score, justification, key_matches, gaps, recommendation, created_at
+        match_score, justification, key_matches, gaps, recommendation, created_at,
+        input_tokens, output_tokens, cost_usd
     FROM jobs
     WHERE match_score >= %s AND notified = FALSE
     ORDER BY match_score DESC;
@@ -152,7 +168,10 @@ def get_unnotified_high_score_jobs(min_score: int) -> list[ProcessedJob]:
                     ProcessedJob(
                         job=job_posting,
                         match=match_result,
-                        processed_at=row['created_at']
+                        processed_at=row['created_at'],
+                        input_tokens=row.get('input_tokens', 0) or 0,
+                        output_tokens=row.get('output_tokens', 0) or 0,
+                        cost_usd=float(row.get('cost_usd', 0.0) or 0.0)
                     )
                 )
     return processed_jobs

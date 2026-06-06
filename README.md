@@ -51,6 +51,8 @@ flowchart TD
 4. **Interactive Local CLI Runner**: Includes a standalone script (`main.py`) to run the entire pipeline instantly on your host machine without needing to set up Docker or Airflow.
 5. **Robust Orchestration**: Includes a ready-to-use Dockerized Airflow DAG with built-in retry logic, rate limit handling, logging, and scheduled runs.
 6. **Aesthetic Email Notifications**: Delivers reports via HTML emails with styled badges, score indicators, and direct links to apply.
+7. **LLMOps Cost Control & Token Tracking**: Logs input/output token usage for every Gemini evaluation, computes exact USD costs based on model pricing, persists them in the PostgreSQL database, and includes a summary audit report in notifications.
+
 
 ---
 
