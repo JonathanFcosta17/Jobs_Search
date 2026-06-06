@@ -92,7 +92,6 @@ with DAG(
         
         jobs_to_evaluate = [JobPosting(**job_dict) for job_dict in unique_serialized_jobs]
         
-        # Free tier has a 15 RPM limit, 2-3s delay is good
         processed_jobs = evaluator.evaluate_batch(jobs_to_evaluate, delay_seconds=2.0)
         
         serialized_processed = [p_job.model_dump(mode="json") for p_job in processed_jobs]
