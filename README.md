@@ -136,10 +136,36 @@ docker compose up airflow-init
 # 3. Start scheduler, webserver, and database containers
 docker compose up -d
 ```
-
 ### Accessing the UI
 1. Open [http://localhost:8080](http://localhost:8080) in your browser.
 2. Sign in with the default credentials:
     *   **Username**: `airflow`
     *   **Password**: `airflow`
 3. Locate `job_search_agent_pipeline` in the DAGs list. It is scheduled to run automatically daily at **12h PM (noon)**. Click the **Trigger DAG** button to start a run manually.
+
+---
+
+## 🧪 Running Unit Tests
+
+The project includes a comprehensive test suite (using `pytest` and mock object patching) covering the resume parser, database adapter, Collector Agent, and Gemini Evaluator Agent.
+
+### Run Tests Locally (Host Machine)
+To run the tests on your host computer:
+```bash
+# 1. Install pytest
+pip install pytest
+
+# 2. Execute pytest
+pytest tests/
+```
+
+### Run Tests inside Docker
+To run the tests inside the Airflow Docker environment:
+```bash
+# 1. Rebuild the image with updated requirements
+docker compose build
+
+# 2. Run pytest inside the container
+docker compose run --rm airflow-webserver pytest tests/
+```
+
